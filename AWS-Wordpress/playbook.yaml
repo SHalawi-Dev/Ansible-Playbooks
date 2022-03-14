@@ -2,61 +2,90 @@
 - hosts: all
   become: true
   vars_files:
-    - vars/default.yml
+    - vars/default.yaml
 
   tasks:
     - name: Install prerequisites
       yum: update_cache=yes state=latest
       tags: [ system ]
 
-    - name: Install LAMP Packages
+    - name: Install amazon-linux-extras
+      yum: name=amazon-linux-extras update_cache=yes state=installed
+      tags: [ system ]
+
+    - name: amazon-linux-extras enable php7.4
+      become: true
+      command: amazon-linux-extras enable php7.4
+      tags: [ system ]
+
+
+    - name: Install PHP7.4 amazon, MariaDB and Apache Packages
       yum: name={{ item }} update_cache=yes state=latest
-      loop: [ 'httpd', 'mysql-server', 'python3-pymysql', 'php=7.4', 'php-mysql']
+      loop: [ 'httpd', 'mariadb-server', 'php', 'MySQL-python']
       tags: [ system ]
 
     - name: Install PHP Extensions
-      yum: name={{ item }} update_cache=yes
+      yum: name={{ item }} update_cache=yes state=installed
       loop: "{{ php_modules }}"
       tags: [ system ]
 
   # Apache Configuration
+    - name: Start httpd service and enable it
+      service:
+        name: httpd
+        enabled: true
+        state: started
+
     - name: Create document root
       file:
         path: "/var/www/{{ http_host }}"
         state: directory
-        owner: "www-data"
-        group: "www-data"
+        owner: "apache"
+        group: "apache"
         mode: '0755'
       tags: [ apache ]
 
     - name: Set up Apache VirtualHost
       template:
         src: "files/apache.conf.j2"
-        dest: "/etc/apache2/sites-available/{{ http_conf }}"
+        dest: "/etc/httpd/conf.d/{{ http_conf }}"
       notify: Reload Apache
-      tags: [ apache ]
+      tags: [ apache ,apache-conf]
 
-    - name: Enable rewrite module
-      shell: /usr/sbin/a2enmod rewrite
+    - name: Comment default welcome site
+      template:
+        src: "files/welcome.conf.j2"
+        dest: "/etc/httpd/conf.d/welcome.conf"
       notify: Reload Apache
-      tags: [ apache ]
+      tags: [ apache, apache-conf ] 
 
-    - name: Enable new site
-      shell: /usr/sbin/a2ensite {{ http_conf }}
-      notify: Reload Apache
-      tags: [ apache ]
+    # - name: Enable rewrite module
+    #   shell: /usr/sbin/a2enmod rewrite
+    #   notify: Reload Apache
+    #   tags: [ apache ]
 
-    - name: Disable default Apache site
-      shell: /usr/sbin/a2dissite 000-default.conf
-      notify: Restart Apache
-      tags: [ apache ]
+    # - name: Enable new site
+    #   shell: /usr/sbin/a2ensite {{ http_conf }}
+    #   notify: Reload Apache
+    #   tags: [ apache ]
+
+    # - name: Disable default Apache site
+    #   shell: /usr/sbin/a2dissite 000-default.conf
+    #   notify: Restart Apache
+    #   tags: [ apache ]
 
   # MySQL Configuration
+    - name: Reload MariaDB service and enable it
+      service:
+          name: mariadb
+          enabled: true
+          state: started
+
     - name: Set the root password
       mysql_user:
         name: root
         password: "{{ mysql_root_password }}"
-        login_unix_socket: /var/run/mysqld/mysqld.sock
+        login_unix_socket: /var/lib/mysql/mysql.sock
       tags: [ mysql, mysql-root ]
 
     - name: Remove all anonymous user accounts
@@ -116,8 +145,8 @@
         path: "/var/www/{{ http_host }}"
         state: directory
         recurse: yes
-        owner: www-data
-        group: www-data
+        owner: apache
+        group: apache
       tags: [ wordpress ]
 
     - name: Set permissions for directories
@@ -132,15 +161,15 @@
       template:
         src: "files/wp-config.php.j2"
         dest: "/var/www/{{ http_host }}/wordpress/wp-config.php"
-      tags: [ wordpress ]
+      tags: [ wordpress, wordpress-conf ]
 
   handlers:
     - name: Reload Apache
       service:
-        name: apache2
+        name: httpd
         state: reloaded
 
     - name: Restart Apache
       service:
-        name: apache2
+        name: httpd
         state: restarted

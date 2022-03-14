@@ -10,6 +10,6 @@ mysql_user: "rick"
 mysql_password: "rickroll"
 
 #HTTP Settings
-http_host: "testdomain"
-http_conf: "testdomain.conf"
+http_host: "wpserver-aws"
+http_conf: "wpserver-aws.conf"
 http_port: "80"
