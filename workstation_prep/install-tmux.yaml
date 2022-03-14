@@ -1,0 +1,12 @@
+---
+- hosts: ubuntu
+  tags: ubuntu,vim-nox,tmux
+  tasks:
+    - name: install tmux and vim nox
+      become: true
+      apt:
+        name:
+          - tmux
+          - vim-nox
+        state: latest
+        update_cache: true

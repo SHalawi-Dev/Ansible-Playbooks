@@ -1,0 +1,15 @@
+---
+#System Settings
+php_modules: [ 'php-curl', 'php-gd', 'php-mbstring', 'php-xml',
+ 'php-xmlrpc', 'php-soap', 'php-intl', 'php-zip' ]
+
+#MySQL Settings
+mysql_root_password: "rickroll"
+mysql_db: "wordpress"
+mysql_user: "rick"
+mysql_password: "rickroll"
+
+#HTTP Settings
+http_host: "testdomain"
+http_conf: "testdomain.conf"
+http_port: "80"
